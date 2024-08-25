@@ -10,6 +10,6 @@ public class RegionController {
     public String getRegionInfo() {
         String region = EC2MetadataUtils.getEC2InstanceRegion();
         String az = EC2MetadataUtils.getAvailabilityZone();
-        return "Region: " + region + ", AZ: " + az;
+        return "{\"Region\": \""+region+"\", \"AZ\": \""+az+"\"}";
     }
 }
