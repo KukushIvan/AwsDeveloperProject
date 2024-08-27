@@ -1,46 +1,77 @@
 
 package com.epam.aws;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagement;
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder;
-import com.amazonaws.services.simplesystemsmanagement.model.GetParameterRequest;
-import com.amazonaws.services.simplesystemsmanagement.model.GetParameterResult;
+import org.springframework.core.io.ByteArrayResource;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import com.epam.aws.model.ImageMetadata;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.URL;
+import javax.annotation.PostConstruct;
 
 @Service
 public class ImageService {
 
-    private final JdbcTemplate jdbcTemplate;
+    @Autowired
+    private S3Client s3Client;
+    String bucketName;
 
-    private final AmazonS3 s3Client;
-    private final String bucketName;
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    public ImageService(JdbcTemplate jdbcTemplate, AmazonS3 s3Client) {
-        this.jdbcTemplate = jdbcTemplate;
+    public ImageService(S3Client s3Client, JdbcTemplate jdbcTemplate) {
         this.s3Client = s3Client;
-
-        AWSSimpleSystemsManagement ssmClient = AWSSimpleSystemsManagementClientBuilder.defaultClient();
-        GetParameterRequest parameterRequest = new GetParameterRequest().withName("/config/s3/bucketName");
-        parameterRequest.setWithDecryption(true);
-        GetParameterResult parameterResult = ssmClient.getParameter(parameterRequest);
-        this.bucketName = parameterResult.getParameter().getValue();
+        this.jdbcTemplate = jdbcTemplate;
+        this.bucketName = System.getenv("S3_BUCKET_NAME");
     }
 
+    @PostConstruct
+    public void init() {
+        // Initialize variables from environment variables
+        bucketName = System.getenv("S3_BUCKET_NAME");
+        String dbHost = System.getenv("DB_HOST");
+        String dbName = System.getenv("DB_NAME");
+        String dbUser = System.getenv("DB_USER");
+        String dbPassword = System.getenv("DB_PASSWORD");
+
+        // Логирование значений переменных окружения
+        System.out.println("DB_HOST: " + System.getenv("DB_HOST"));
+        System.out.println("DB_NAME: " + System.getenv("DB_NAME"));
+        System.out.println("DB_USER: " + System.getenv("DB_USER"));
+        System.out.println("DB_PASSWORD: " + System.getenv("DB_PASSWORD"));
+
+        try {
+            // Configure DataSource for JdbcTemplate
+            DriverManagerDataSource dataSource = new DriverManagerDataSource();
+            dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            dataSource.setUrl("jdbc:mysql://" + dbHost + "/" + dbName);
+            dataSource.setUsername(dbUser);
+            dataSource.setPassword(dbPassword);
+            // Логирование перед созданием JdbcTemplate
+            System.out.println("DataSource configured successfully.");
+
+            this.jdbcTemplate = new JdbcTemplate(dataSource);
+
+            // Логирование после создания JdbcTemplate
+            System.out.println("JdbcTemplate initialized successfully.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error occurred during DataSource or JdbcTemplate initialization: " + e.getMessage());
+        }
+
+
+    }
 
     public ResponseEntity<String> uploadImage(MultipartFile file) {
         try {
@@ -48,87 +79,85 @@ public class ImageService {
                 return ResponseEntity.badRequest().body("File is empty");
             }
 
-            ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(file.getSize());
-            metadata.setContentType(file.getContentType());
-
-            s3Client.putObject(new PutObjectRequest(bucketName, file.getOriginalFilename(), file.getInputStream(), metadata));
-
-            // Saving metadata to RDS
-            String sql = "INSERT INTO image_metadata (file_name, file_size, content_type) VALUES (?, ?, ?)";
-            jdbcTemplate.update(sql, file.getOriginalFilename(), file.getSize(), file.getContentType());
-
-            return ResponseEntity.ok("File uploaded successfully: " + file.getOriginalFilename());
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not upload the file: " + ex.getMessage());
-        }
-    }
-
-    public ResponseEntity<ImageMetadata> getImageMetadata(String imageName) {
-        try {
-            String sql = "SELECT * FROM image_metadata WHERE file_name = ?";
-            ImageMetadata metadata = jdbcTemplate.query(
-                    sql,
-                    ps -> ps.setString(1, imageName),
-                    new BeanPropertyRowMapper<>(ImageMetadata.class)
-            ).stream().findFirst().orElse(null);
-
-            if (metadata != null) {
-                return ResponseEntity.ok(metadata);
-            } else {
-                return ResponseEntity.notFound().build();
+            // Extract metadata
+            String fileName = file.getOriginalFilename();
+            String fileExtension = "";
+            if (fileName != null && fileName.contains(".")) {
+                fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1);
             }
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+            long fileSize = file.getSize();
+            String lastUpdateDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
 
-    public ResponseEntity<ImageMetadata> getRandomImageMetadata() {
-        try {
-            String sql = "SELECT * FROM image_metadata ORDER BY RAND() LIMIT 1";
-            ImageMetadata metadata = jdbcTemplate.query(
-                    sql,
-                    new BeanPropertyRowMapper<>(ImageMetadata.class)
-            ).stream().findFirst().orElse(null);
+            // Save file to S3
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(fileName)
+                            .build(),
+                    RequestBody.fromInputStream(file.getInputStream(), fileSize)
+            );
 
-            if (metadata != null) {
-                return ResponseEntity.ok(metadata);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+            // Save metadata to RDS
+            String sql = "INSERT INTO image_metadata (file_name, file_size, file_extension, last_update_date) VALUES (?, ?, ?, ?)";
 
-    public ResponseEntity<Resource> downloadImage(String imageName) {
-        try {
-            URL url = s3Client.getUrl(bucketName, imageName);
-            Resource resource = new UrlResource(url);
 
-            if (resource.exists()) {
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                        .body(resource);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            jdbcTemplate.update(sql, fileName, fileSize, fileExtension, lastUpdateDate);
+
+            return ResponseEntity.ok("File uploaded successfully: " + fileName);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not upload the file: " + e.getMessage());
         }
     }
 
     public ResponseEntity<String> deleteImage(String imageName) {
         try {
-            s3Client.deleteObject(bucketName, imageName);
+            // Delete file from S3
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(imageName)
+                    .build());
 
-            // Deleting metadata from RDS
+            // Delete metadata from RDS
             String sql = "DELETE FROM image_metadata WHERE file_name = ?";
             jdbcTemplate.update(sql, imageName);
 
             return ResponseEntity.ok("File deleted successfully");
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not delete the file: " + ex.getMessage());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Could not delete the file: " + e.getMessage());
         }
+    }
+
+    public ResponseEntity<ImageMetadata> getImageMetadata(String imageName) {
+        String sql = "SELECT * FROM image_metadata WHERE file_name = ?";
+        ImageMetadata metadata = jdbcTemplate.queryForObject(sql, new Object[]{imageName}, new ImageMetadataRowMapper());
+        return ResponseEntity.ok(metadata);
+    }
+
+    public ResponseEntity<ImageMetadata> getRandomImageMetadata() {
+        String sql = "SELECT * FROM image_metadata ORDER BY RAND() LIMIT 1";
+        ImageMetadata metadata = jdbcTemplate.queryForObject(sql, new ImageMetadataRowMapper());
+        return ResponseEntity.ok(metadata);
+    }
+
+    public ResponseEntity<Resource> downloadImage(String imageName) {
+        try (var s3ObjectInputStream = s3Client.getObject(GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(imageName)
+                .build())) {
+
+            byte[] imageBytes = s3ObjectInputStream.readAllBytes();
+            Resource resource = new ByteArrayResource(imageBytes);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + imageName + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+
     }
 }

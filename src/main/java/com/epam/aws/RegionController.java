@@ -2,7 +2,7 @@ package com.epam.aws;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.amazonaws.util.EC2MetadataUtils;
+import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils;
 
 @RestController
 public class RegionController {

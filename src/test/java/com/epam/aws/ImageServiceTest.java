@@ -1,184 +1,149 @@
 package com.epam.aws;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagement;
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder;
-import com.amazonaws.services.simplesystemsmanagement.model.GetParameterRequest;
-import com.amazonaws.services.simplesystemsmanagement.model.GetParameterResult;
-import com.amazonaws.util.EC2MetadataUtils;
-import org.junit.jupiter.api.AfterEach;
+import com.epam.aws.model.ImageMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-import java.net.URL;
-import java.util.List;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-
-@ExtendWith(MockitoExtension.class)
 class ImageServiceTest {
+
+    @Mock
+    private S3Client s3Client;
 
     @Mock
     private JdbcTemplate jdbcTemplate;
 
     @Mock
-    private AmazonS3 s3Client;
-
-    @Mock
-    private AWSSimpleSystemsManagement ssmClient;
+    private MultipartFile multipartFile;
 
     @InjectMocks
     private ImageService imageService;
 
-    private MockedStatic<AWSSimpleSystemsManagementClientBuilder> ssmClientBuilderMock;
-
-    private final String testFileName = "test.jpg";
-    private ImageMetadata testMetadata;
-
     @BeforeEach
-    void setUp() {
-        // Mock the static method to return the mocked SSM client
-        ssmClientBuilderMock = mockStatic(AWSSimpleSystemsManagementClientBuilder.class);
-        AWSSimpleSystemsManagementClientBuilder ssmClientBuilder = mock(AWSSimpleSystemsManagementClientBuilder.class);
-        when(ssmClientBuilder.build()).thenReturn(ssmClient);
-        ssmClientBuilderMock.when(AWSSimpleSystemsManagementClientBuilder::defaultClient).thenReturn(ssmClientBuilder);
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+        // Создаем mock-объекты для s3Client и jdbcTemplate
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), any(ImageMetadataRowMapper.class)))
+                .thenReturn(new ImageMetadata("test.jpg", 12345L, "jpg", new java.util.Date()));
+        when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class)))
+                .thenReturn(new ImageMetadata("random.jpg", 12345L, "jpg", new java.util.Date()));
 
-        // Mock the response from SSM client
-        GetParameterResult parameterResult = mock(GetParameterResult.class);
-        when(parameterResult.getParameter()).thenReturn(new com.amazonaws.services.simplesystemsmanagement.model.Parameter().withValue("test-bucket"));
-        when(ssmClient.getParameter(any(GetParameterRequest.class))).thenReturn(parameterResult);
-
-        // Реинициализация ImageService для использования замокированных зависимостей
-        imageService = new ImageService(jdbcTemplate, s3Client);
-
-        testMetadata = new ImageMetadata(testFileName, 12345L, "image/jpeg", "2024-08-22T12:34:56Z");
+        imageService = new ImageService(s3Client, jdbcTemplate);
     }
 
-//    @Test
-    void testGetImageMetadataSuccess() {
-        GetParameterResult parameterResult = Mockito.mock(GetParameterResult.class);
-        when(parameterResult.getParameter()).thenReturn(new com.amazonaws.services.simplesystemsmanagement.model.Parameter().withValue("test-bucket"));
-        // Mock the jdbcTemplate query to return a list containing testMetadata
-        when(jdbcTemplate.query(anyString(), any(PreparedStatementSetter.class), any(BeanPropertyRowMapper.class)))
-                .thenReturn(List.of(testMetadata));
-        when(ssmClient.getParameter(any(GetParameterRequest.class))).thenReturn(parameterResult);
-        // Call the method
-        ResponseEntity<ImageMetadata> response = imageService.getImageMetadata(testFileName);
+    @Test
+    void testUploadImage_Success() throws IOException {
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.jpg");
+        when(multipartFile.getSize()).thenReturn(12345L);
+        when(multipartFile.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[0]));
 
-        // Validate the response
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(testMetadata, response.getBody());
+        ResponseEntity<String> response = imageService.uploadImage(multipartFile);
+
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(Objects.requireNonNull(response.getBody()).contains("File uploaded successfully"));
+        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(jdbcTemplate).update(anyString(), any(Object[].class));
     }
 
-//    @Test
-    void testGetImageMetadataNotFound() {
-        // Mock the jdbcTemplate query to return an empty list
-        when(jdbcTemplate.query(anyString(), any(PreparedStatementSetter.class), any(BeanPropertyRowMapper.class)))
-                .thenReturn(List.of());
+    @Test
+    void testUploadImage_FileIsEmpty() {
+        when(multipartFile.isEmpty()).thenReturn(true);
 
-        // Call the method
-        ResponseEntity<ImageMetadata> response = imageService.getImageMetadata(testFileName);
+        ResponseEntity<String> response = imageService.uploadImage(multipartFile);
 
-        // Validate the response
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(400, response.getStatusCodeValue());
+        assertEquals("File is empty", response.getBody());
+        verifyNoInteractions(s3Client);
+        verifyNoInteractions(jdbcTemplate);
     }
 
-//    @Test
-    void testGetImageMetadataException() {
-        // Mock the jdbcTemplate query to throw an exception
-        when(jdbcTemplate.query(anyString(), any(PreparedStatementSetter.class), any(BeanPropertyRowMapper.class)))
-                .thenThrow(new RuntimeException("Database error"));
+    @Test
+    void testDeleteImage_Success() {
+        ResponseEntity<String> response = imageService.deleteImage("test.jpg");
 
-        // Call the method
-        ResponseEntity<ImageMetadata> response = imageService.getImageMetadata(testFileName);
-
-        // Validate the response
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals(200, response.getStatusCodeValue());
+        assertEquals("File deleted successfully", response.getBody());
+        verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
+        verify(jdbcTemplate).update(anyString(), eq("test.jpg"));
     }
 
-//    @Test
-    void testUploadImage() throws Exception {
-        MultipartFile file = mock(MultipartFile.class);
-        when(file.isEmpty()).thenReturn(false);
-        when(file.getOriginalFilename()).thenReturn("test.jpg");
-        when(file.getSize()).thenReturn(12345L);
-        when(file.getContentType()).thenReturn("image/jpeg");
-        when(file.getInputStream()).thenReturn(Mockito.mock(java.io.InputStream.class));
+    @Test
+    void testDeleteImage_Failure() {
+        doThrow(new RuntimeException("S3 delete failed")).when(s3Client).deleteObject(any(DeleteObjectRequest.class));
 
-        ResponseEntity<String> response = imageService.uploadImage(file);
+        ResponseEntity<String> response = imageService.deleteImage("test.jpg");
 
-
-        verify(s3Client).putObject(any(PutObjectRequest.class));
-        verify(jdbcTemplate).update(anyString(), anyString(), anyLong(), anyString());
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("File uploaded successfully: test.jpg", response.getBody());
+        assertEquals(500, response.getStatusCodeValue());
+        assertTrue(Objects.requireNonNull(response.getBody()).contains("Could not delete the file"));
     }
 
-//    @Test
+    @Test
     void testGetImageMetadata() {
-        ImageMetadata metadata = new ImageMetadata("test.jpg", 12345L, "image/jpeg", "2023-08-21T12:34:56Z");
-        when(jdbcTemplate.query(anyString(), any(PreparedStatementSetter.class), any(BeanPropertyRowMapper.class)))
-                .thenReturn(List.of(metadata));
+        ImageMetadata mockMetadata = new ImageMetadata("test.jpg", 12345L, "jpg", new java.util.Date());
+        when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), any(ImageMetadataRowMapper.class)))
+                .thenReturn(mockMetadata);
 
         ResponseEntity<ImageMetadata> response = imageService.getImageMetadata("test.jpg");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(metadata, response.getBody());
+        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(mockMetadata, response.getBody());
     }
 
-//    @Test
+    @Test
     void testGetRandomImageMetadata() {
-        ImageMetadata metadata = new ImageMetadata("random.jpg", 54321L, "image/png", "2023-08-21T12:34:56Z");
-        when(jdbcTemplate.query(anyString(), any(BeanPropertyRowMapper.class)))
-                .thenReturn(List.of(metadata));
+        ImageMetadata mockMetadata = new ImageMetadata("random.jpg", 12345L, "jpg", new java.util.Date());
+        when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class)))
+                .thenReturn(mockMetadata);
 
         ResponseEntity<ImageMetadata> response = imageService.getRandomImageMetadata();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(metadata, response.getBody());
+        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(mockMetadata, response.getBody());
     }
 
-//    @Test
-    void testDownloadImage() throws Exception {
-        URL url = new URL("https://example.com/test.jpg");
-        when(s3Client.getUrl(anyString(), anyString())).thenReturn(url);
-        Resource resource = new UrlResource(url);
-        when(resource.exists()).thenReturn(true);
+    @Test
+    void testDownloadImage_Success() {
+        byte[] mockImageData = "image data".getBytes();
+        ResponseInputStream<GetObjectResponse> mockInputStream = new ResponseInputStream<>(mock(GetObjectResponse.class), new ByteArrayInputStream(mockImageData));
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(mockInputStream);
 
         ResponseEntity<Resource> response = imageService.downloadImage("test.jpg");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(resource, response.getBody());
+        assertEquals(200, response.getStatusCodeValue());
+        assertArrayEquals(mockImageData, ((ByteArrayResource) Objects.requireNonNull(response.getBody())).getByteArray());
     }
 
-//    @Test
-    void testDeleteImage() {
-        ResponseEntity<String> response = imageService.deleteImage("test.jpg");
+    @Test
+    void testDownloadImage_Failure() {
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenThrow(new RuntimeException("S3 download failed"));
 
-        verify(s3Client).deleteObject(anyString(), anyString());
-        verify(jdbcTemplate).update(anyString(), anyString());
+        ResponseEntity<Resource> response = imageService.downloadImage("test.jpg");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("File deleted successfully", response.getBody());
+        assertEquals(500, response.getStatusCodeValue());
+        assertNull(response.getBody());
     }
 }
