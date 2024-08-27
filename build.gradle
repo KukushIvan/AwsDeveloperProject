@@ -13,9 +13,24 @@ repositories {
 }
 
 dependencies {
+    implementation platform('software.amazon.awssdk:bom:2.20.0')
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:ec2'
+    implementation 'software.amazon.awssdk:ssm'
+    implementation 'org.springdoc:springdoc-openapi-ui:1.6.9'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'com.amazonaws:aws-java-sdk-ec2:1.12.765'
+    compileOnly  'org.projectlombok:lombok'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    annotationProcessor 'org.projectlombok:lombok'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'mysql:mysql-connector-java'
+
+    // Dependencies for testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-core:5.2.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.2.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
 }
 
 test {
