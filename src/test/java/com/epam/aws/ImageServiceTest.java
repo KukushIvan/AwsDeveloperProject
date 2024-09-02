@@ -46,7 +46,7 @@ class ImageServiceTest {
         MockitoAnnotations.openMocks(this);
         // Создаем mock-объекты для s3Client и jdbcTemplate
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), any(ImageMetadataRowMapper.class)))
+        when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class), any(Object[].class)))
                 .thenReturn(new ImageMetadata("test.jpg", 12345L, "jpg", new java.util.Date()));
         when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class)))
                 .thenReturn(new ImageMetadata("random.jpg", 12345L, "jpg", new java.util.Date()));
@@ -63,7 +63,7 @@ class ImageServiceTest {
 
         ResponseEntity<String> response = imageService.uploadImage(multipartFile);
 
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertTrue(Objects.requireNonNull(response.getBody()).contains("File uploaded successfully"));
         verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
         verify(jdbcTemplate).update(anyString(), any(Object[].class));
@@ -75,7 +75,7 @@ class ImageServiceTest {
 
         ResponseEntity<String> response = imageService.uploadImage(multipartFile);
 
-        assertEquals(400, response.getStatusCodeValue());
+        assertEquals(400, response.getStatusCode().value());
         assertEquals("File is empty", response.getBody());
         verifyNoInteractions(s3Client);
         verifyNoInteractions(jdbcTemplate);
@@ -85,7 +85,7 @@ class ImageServiceTest {
     void testDeleteImage_Success() {
         ResponseEntity<String> response = imageService.deleteImage("test.jpg");
 
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertEquals("File deleted successfully", response.getBody());
         verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
         verify(jdbcTemplate).update(anyString(), eq("test.jpg"));
@@ -97,19 +97,19 @@ class ImageServiceTest {
 
         ResponseEntity<String> response = imageService.deleteImage("test.jpg");
 
-        assertEquals(500, response.getStatusCodeValue());
+        assertEquals(500, response.getStatusCode().value());
         assertTrue(Objects.requireNonNull(response.getBody()).contains("Could not delete the file"));
     }
 
     @Test
     void testGetImageMetadata() {
         ImageMetadata mockMetadata = new ImageMetadata("test.jpg", 12345L, "jpg", new java.util.Date());
-        when(jdbcTemplate.queryForObject(anyString(), any(Object[].class), any(ImageMetadataRowMapper.class)))
+        when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class), any(Object[].class)))
                 .thenReturn(mockMetadata);
 
         ResponseEntity<ImageMetadata> response = imageService.getImageMetadata("test.jpg");
 
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertEquals(mockMetadata, response.getBody());
     }
 
@@ -121,7 +121,7 @@ class ImageServiceTest {
 
         ResponseEntity<ImageMetadata> response = imageService.getRandomImageMetadata();
 
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertEquals(mockMetadata, response.getBody());
     }
 
@@ -133,7 +133,7 @@ class ImageServiceTest {
 
         ResponseEntity<Resource> response = imageService.downloadImage("test.jpg");
 
-        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(200, response.getStatusCode().value());
         assertArrayEquals(mockImageData, ((ByteArrayResource) Objects.requireNonNull(response.getBody())).getByteArray());
     }
 
@@ -143,7 +143,7 @@ class ImageServiceTest {
 
         ResponseEntity<Resource> response = imageService.downloadImage("test.jpg");
 
-        assertEquals(500, response.getStatusCodeValue());
+        assertEquals(500, response.getStatusCode().value());
         assertNull(response.getBody());
     }
 }

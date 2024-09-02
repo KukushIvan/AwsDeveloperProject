@@ -1,7 +1,10 @@
 
 package com.epam.aws;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.java.Log;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.dao.EmptyResultDataAccessException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -14,14 +17,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.PostConstruct;
-
+@Log
 @Service
 public class ImageService {
+
+
 
     @Autowired
     private S3Client s3Client;
@@ -38,39 +41,11 @@ public class ImageService {
 
     @PostConstruct
     public void init() {
-        // Initialize variables from environment variables
-        bucketName = System.getenv("S3_BUCKET_NAME");
-        String dbHost = System.getenv("DB_HOST");
-        String dbName = System.getenv("DB_NAME");
-        String dbUser = System.getenv("DB_USER");
-        String dbPassword = System.getenv("DB_PASSWORD");
-
-        // Логирование значений переменных окружения
-        System.out.println("DB_HOST: " + System.getenv("DB_HOST"));
-        System.out.println("DB_NAME: " + System.getenv("DB_NAME"));
-        System.out.println("DB_USER: " + System.getenv("DB_USER"));
-        System.out.println("DB_PASSWORD: " + System.getenv("DB_PASSWORD"));
-
-        try {
-            // Configure DataSource for JdbcTemplate
-            DriverManagerDataSource dataSource = new DriverManagerDataSource();
-            dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
-            dataSource.setUrl("jdbc:mysql://" + dbHost + "/" + dbName);
-            dataSource.setUsername(dbUser);
-            dataSource.setPassword(dbPassword);
-            // Логирование перед созданием JdbcTemplate
-            System.out.println("DataSource configured successfully.");
-
-            this.jdbcTemplate = new JdbcTemplate(dataSource);
-
-            // Логирование после создания JdbcTemplate
-            System.out.println("JdbcTemplate initialized successfully.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Error occurred during DataSource or JdbcTemplate initialization: " + e.getMessage());
+        if (bucketName == null) {
+            throw new IllegalStateException("S3_BUCKET_NAME environment variable is not set.");
         }
 
-
+        log.info("ImageService initialized successfully with bucket: " + bucketName);
     }
 
     public ResponseEntity<String> uploadImage(MultipartFile file) {
@@ -132,14 +107,22 @@ public class ImageService {
 
     public ResponseEntity<ImageMetadata> getImageMetadata(String imageName) {
         String sql = "SELECT * FROM image_metadata WHERE file_name = ?";
-        ImageMetadata metadata = jdbcTemplate.queryForObject(sql, new Object[]{imageName}, new ImageMetadataRowMapper());
-        return ResponseEntity.ok(metadata);
+        try {
+            ImageMetadata metadata = jdbcTemplate.queryForObject(sql, new ImageMetadataRowMapper(), imageName);
+            return ResponseEntity.ok(metadata);
+        } catch (EmptyResultDataAccessException ex) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     public ResponseEntity<ImageMetadata> getRandomImageMetadata() {
         String sql = "SELECT * FROM image_metadata ORDER BY RAND() LIMIT 1";
-        ImageMetadata metadata = jdbcTemplate.queryForObject(sql, new ImageMetadataRowMapper());
-        return ResponseEntity.ok(metadata);
+        try {
+            ImageMetadata metadata = jdbcTemplate.queryForObject(sql, new ImageMetadataRowMapper());
+            return ResponseEntity.ok(metadata);
+        } catch (EmptyResultDataAccessException ex) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     public ResponseEntity<Resource> downloadImage(String imageName) {
