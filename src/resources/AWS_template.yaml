@@ -1,0 +1,227 @@
+Parameters:
+  ivanKukushkinProjectHomeIp:
+    Type: String
+    Description: my changing ip
+  ivanKukushkinProjectAMI:
+    Type: String
+    Description: my ami image id
+  ivanKukushkinInstanceType:
+    Type: String
+    Description: desired instance type
+  DBUsername:
+    Type: String
+    Description: The database admin account username
+  DBPassword:
+    Type: String
+    Description: The database admin account password
+    NoEcho: true
+  DBName:
+    Type: String
+    Description: The name of the database
+  DBHost:
+    Type: String
+    Description: The hostname of the RDS instance
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ivan-kukushkin-bucket
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-Network
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AssignIpv6AddressOnCreation: false
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs us-west-2
+      CidrBlock: 10.0.11.0/24
+      EnableDns64: false
+      Ipv6Native: false
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-PublicSubnet-A
+      VpcId: !Ref VPC
+      
+  RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref RouteTable
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AssignIpv6AddressOnCreation: false
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs us-west-2
+      CidrBlock: 10.0.12.0/24
+      EnableDns64: false
+      Ipv6Native: false
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-PrivateSubnet
+      VpcId: !Ref VPC
+      
+  AdditionalPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs us-west-2
+      CidrBlock: 10.0.13.0/24
+      EnableDns64: false
+      Ipv6Native: false
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-PrivateSubnet-B
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-RouteTable
+
+  Route:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+      RoleName: EC2InstanceRole
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - FullAccessRoleS3
+
+  SecurityGroupEC2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and RDS access
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref ivanKukushkinProjectHomeIp
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroupRDS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access from EC2 only
+      VpcId: !Ref VPC
+
+  # Add ingress rule for EC2 to allow access to RDS
+  EC2ToRDSIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref SecurityGroupRDS
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref SecurityGroupEC2
+
+  EC2Instance:
+    DependsOn: SecurityGroupEC2
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref ivanKukushkinInstanceType
+      SecurityGroupIds:
+        - !Ref SecurityGroupEC2
+      KeyName: Work-pc
+      SubnetId: !Ref PublicSubnetA
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      ImageId: !Ref ivanKukushkinProjectAMI
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-EC2Instance
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash
+          echo "DB_USER=${DBUsername}" >> /etc/environment
+          echo "DB_PASSWORD=${DBPassword}" >> /etc/environment
+          echo "DB_HOST=${RDSInstance.Endpoint.Address}" >> /etc/environment
+          echo "DB_NAME=${DBName}" >> /etc/environment
+          echo "S3_BUCKET_NAME=${Bucket}" >> /etc/environment
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t3.micro
+      Engine: MySQL
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !Ref SecurityGroupRDS
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      BackupRetentionPeriod: 0
+      StorageType: gp2
+      PubliclyAccessible: false
+      MultiAZ: false
+      DBInstanceIdentifier: ivan-kukushkin-project-rds-instance
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for RDS instance
+      SubnetIds:
+        - !Ref PrivateSubnet
+        - !Ref AdditionalPrivateSubnet

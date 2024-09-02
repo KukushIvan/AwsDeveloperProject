@@ -26,8 +26,8 @@ class ImageControllerTest {
     private ImageController imageController;
 
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this).close();
     }
 
     @Test

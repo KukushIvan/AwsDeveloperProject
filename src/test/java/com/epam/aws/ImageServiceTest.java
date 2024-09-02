@@ -42,16 +42,8 @@ class ImageServiceTest {
     private ImageService imageService;
 
     @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-        // Создаем mock-объекты для s3Client и jdbcTemplate
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class), any(Object[].class)))
-                .thenReturn(new ImageMetadata("test.jpg", 12345L, "jpg", new java.util.Date()));
-        when(jdbcTemplate.queryForObject(anyString(), any(ImageMetadataRowMapper.class)))
-                .thenReturn(new ImageMetadata("random.jpg", 12345L, "jpg", new java.util.Date()));
-
-        imageService = new ImageService(s3Client, jdbcTemplate);
+    public void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this).close();
     }
 
     @Test
