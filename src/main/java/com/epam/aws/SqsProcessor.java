@@ -22,16 +22,18 @@ public class SqsProcessor {
 
     private final SnsClient snsClient;
 
-    @Value("${aws.sqs.queue.url}")
-    private String queueUrl;
+    private final String queueUrl;
 
-    @Value("${aws.sns.topic.arn}")
-    private String topicArn;
+    private final String topicArn;
 
     @Autowired
-    public SqsProcessor(SqsClient sqsClient, SnsClient snsClient) {
+    public SqsProcessor(SqsClient sqsClient, SnsClient snsClient,
+                        @Value("${aws.sqs.queue.url}") String queueUrl,
+                        @Value("${aws.sns.topic.arn}") String topicArn) {
         this.sqsClient = sqsClient;
         this.snsClient = snsClient;
+        this.queueUrl = queueUrl;
+        this.topicArn = topicArn;
     }
 
     @Scheduled(fixedRateString = "PT1M")
