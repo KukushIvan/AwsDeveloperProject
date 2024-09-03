@@ -11,9 +11,9 @@ public class ImageMetadataRowMapper implements RowMapper<ImageMetadata> {
     public ImageMetadata mapRow(ResultSet rs, int rowNum) throws SQLException {
         ImageMetadata metadata = new ImageMetadata();
         metadata.setId(rs.getLong("id"));
-        metadata.setName(rs.getString("file_name"));
-        metadata.setSize(rs.getLong("file_size"));
-        metadata.setExtension(rs.getString("file_extension"));
+        metadata.setFileName(rs.getString("file_name"));
+        metadata.setFileSize(rs.getLong("file_size"));
+        metadata.setFileExtension(rs.getString("file_extension"));
         metadata.setLastUpdateDate(new Date(rs.getTimestamp("last_update_date").getTime()));
         return metadata;
     }
