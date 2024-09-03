@@ -14,7 +14,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class ImageControllerTest {
@@ -26,8 +25,8 @@ class ImageControllerTest {
     private ImageController imageController;
 
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    void setUp() throws Exception {
+        MockitoAnnotations.openMocks(this).close();
     }
 
     @Test

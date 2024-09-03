@@ -1,36 +1,40 @@
 plugins {
-    id 'org.springframework.boot' version '2.7.3'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.springframework.boot' version '3.3.3'
+    id 'io.spring.dependency-management' version '1.1.6'
     id 'java'
+    id "com.github.ben-manes.versions" version "0.51.0"
 }
 
 group = 'com.epam'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
+version = '0.0.2'
+sourceCompatibility = '17'
+targetCompatibility = '17'
 
 repositories {
     mavenCentral()
 }
+//Since Spring boot uses the internal junit version we should update it using the variable below and not with dependencies
+ext['junit-jupiter.version'] = '5.11.0'
 
 dependencies {
-    implementation platform('software.amazon.awssdk:bom:2.20.0')
+    implementation platform('software.amazon.awssdk:bom:2.27.17')
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:ec2'
     implementation 'software.amazon.awssdk:ssm'
-    implementation 'org.springdoc:springdoc-openapi-ui:1.6.9'
+    implementation 'software.amazon.awssdk:sns'
+    implementation 'software.amazon.awssdk:sqs'
+    implementation 'org.springdoc:springdoc-openapi-ui:1.8.0'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly  'org.projectlombok:lombok'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     annotationProcessor 'org.projectlombok:lombok'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'mysql:mysql-connector-java'
+    implementation 'mysql:mysql-connector-java:8.0.33'
 
     // Dependencies for testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.mockito:mockito-core:5.2.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.2.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+    testImplementation 'org.mockito:mockito-core:5.13.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.13.0'
 }
 
 test {
