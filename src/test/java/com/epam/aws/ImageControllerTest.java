@@ -14,7 +14,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class ImageControllerTest {

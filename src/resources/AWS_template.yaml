@@ -18,9 +18,6 @@ Parameters:
   DBName:
     Type: String
     Description: The name of the database
-  DBHost:
-    Type: String
-    Description: The hostname of the RDS instance
 
 Resources:
   Bucket:
@@ -40,6 +37,64 @@ Resources:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-Network
+
+  ProjectUploadsNotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "ivan-kukushkin-project-UploadsNotificationQueue"
+
+  ProjectUploadsNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "ivan-kukushkin-project-UploadsNotificationTopic"
+
+  CombinedAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: S3Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::ivan-kukushkin-bucket"
+                  - !Sub "arn:aws:s3:::ivan-kukushkin-bucket/*"
+        - PolicyName: SQSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:SendMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt ProjectUploadsNotificationQueue.Arn
+        - PolicyName: SNSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                  - sns:Subscribe
+                  - sns:ListSubscriptionsByTopic
+                  - sns:Unsubscribe
+                  - SNS:SetSubscriptionAttributes
+                Resource: !Ref ProjectUploadsNotificationTopic
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -142,7 +197,9 @@ Resources:
     Properties:
       Path: /
       Roles:
-        - FullAccessRoleS3
+        - !Ref CombinedAccessRole
+    DependsOn:
+      - CombinedAccessRole
 
   SecurityGroupEC2:
     Type: AWS::EC2::SecurityGroup
@@ -196,11 +253,20 @@ Resources:
       UserData: !Base64
         Fn::Sub: |
           #!/bin/bash
+          yum update -y
+          yum install -y java-17-amazon-corretto-devel
+          sudo wget https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm 
+          sudo dnf install mysql80-community-release-el9-1.noarch.rpm -y
+          sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
+          sudo dnf install mysql-community-client -y
+          sudo rm mysql80-community-release-el9-1.noarch.rpm -f
           echo "DB_USER=${DBUsername}" >> /etc/environment
           echo "DB_PASSWORD=${DBPassword}" >> /etc/environment
           echo "DB_HOST=${RDSInstance.Endpoint.Address}" >> /etc/environment
           echo "DB_NAME=${DBName}" >> /etc/environment
           echo "S3_BUCKET_NAME=${Bucket}" >> /etc/environment
+          echo "NOTIFICATION_QUEUE=${ProjectUploadsNotificationQueue}" >> /etc/environment
+          echo "NOTIFICATION_TOPIC=${ProjectUploadsNotificationTopic}" >> /etc/environment
   RDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
