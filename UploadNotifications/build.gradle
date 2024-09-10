@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+    id 'io.spring.dependency-management' version '1.1.6'
+    id "com.github.ben-manes.versions" version "0.51.0"
+}
+
+group = 'com.epam.aws.lambda'
+version = '0.0.2'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform('software.amazon.awssdk:bom:2.27.22')
+    // AWS SDK for SQS
+    implementation 'software.amazon.awssdk:sqs'
+
+    // AWS SDK for SNS
+    implementation 'software.amazon.awssdk:sns'
+
+    // AWS Lambda Java Core
+    implementation 'com.amazonaws:aws-lambda-java-core:1.2.3'
+
+    // AWS Lambda Java Events
+    implementation 'com.amazonaws:aws-lambda-java-events:3.13.0'
+
+    // AWS Lambda Java Log4j2
+    implementation 'com.amazonaws:aws-lambda-java-log4j2:1.6.0'
+
+    // Test dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.0'
+    testImplementation 'org.mockito:mockito-core:5.13.0'
+    testImplementation 'uk.org.webcompere:system-stubs-jupiter:2.1.6'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.epam.aws.lambda.UploadsNotificationHandler'
+        attributes 'Class-Path': configurations.runtimeClasspath.collect { "lib/${it.getName()}" }.join(' ')
+    }
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    archiveVersion.set('')
+}
+
+test {
+    useJUnitPlatform()
+}

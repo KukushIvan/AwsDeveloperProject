@@ -94,6 +94,9 @@ Resources:
                   - sns:ListSubscriptionsByTopic
                   - sns:Unsubscribe
                   - SNS:SetSubscriptionAttributes
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Resource: !Ref ProjectUploadsNotificationTopic
 
   InternetGateway:
@@ -291,3 +294,16 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet
         - !Ref AdditionalPrivateSubnet
+Outputs:
+  CombinedAccessRoleArn:
+    Value: !GetAtt CombinedAccessRole.Arn
+    Export:
+      Name: CombinedAccessRoleArn
+  UploadsNotificationQueueArn:
+    Value: !GetAtt ProjectUploadsNotificationQueue.Arn
+    Export:
+      Name: UploadsNotificationQueueArn  # Exporting ARN SQS
+  UploadsNotificationTopicArn:
+    Value: !Ref ProjectUploadsNotificationTopic
+    Export:
+      Name: UploadsNotificationTopicArn  # Exporting ARN SNS

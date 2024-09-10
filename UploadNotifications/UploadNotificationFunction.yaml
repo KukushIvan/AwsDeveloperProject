@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  UploadsNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Ivan-Kukushkin-Project-UploadsNotificationFunction
+      Handler: com.epam.aws.lambda.UploadsNotificationHandler::handleRequest
+      Runtime: java17
+      CodeUri: build/libs/UploadNotifications.jar
+      Role: !ImportValue CombinedAccessRoleArn
+      Events:
+        SqsEvent:
+          Type: SQS
+          Properties:
+            Queue: !ImportValue UploadsNotificationQueueArn
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !ImportValue UploadsNotificationTopicArn
+          AWS_REGION: !ImportValue
+      DeploymentPreference:
+        Type: AllAtOnce
+
