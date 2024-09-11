@@ -307,3 +307,15 @@ Outputs:
     Value: !Ref ProjectUploadsNotificationTopic
     Export:
       Name: UploadsNotificationTopicArn  # Exporting ARN SNS
+  RdsInstanceEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: RdsInstanceEndpoint  # Exporting RDS endpoint
+  RdsDatabaseName:
+    Value: !Ref DBName
+    Export:
+      Name: RdsDatabaseName
+  S3BucketName:
+    Value: !Ref Bucket
+    Export:
+      Name: S3BucketName

@@ -1,4 +1,5 @@
 rootProject.name = 'AwsDeveloperProject'
 
 include 'UploadNotifications'
+include 'DataConsistency'
 
