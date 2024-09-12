@@ -8,7 +8,7 @@ Resources:
       Handler: com.epam.aws.lambda.UploadsNotificationHandler::handleRequest
       Runtime: java17
       CodeUri: build/libs/UploadNotifications.jar
-      Role: !ImportValue CombinedAccessRoleArn
+      Role: !ImportValue LambdaExecutionRole
       Events:
         SqsEvent:
           Type: SQS

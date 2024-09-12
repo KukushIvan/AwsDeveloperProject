@@ -22,14 +22,7 @@ Resources:
       Runtime: java17
       MemorySize: 512
       Timeout: 30
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - Statement:
-            Effect: Allow
-            Action:
-              - rds-db:connect
-              - s3:GetObject
-            Resource: "*"
+      Role: !ImportValue LambdaExecutionRole
       Environment:
         Variables:
           DB_ENDPOINT: !ImportValue RdsInstanceEndpoint

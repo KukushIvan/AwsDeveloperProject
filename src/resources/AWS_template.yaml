@@ -70,8 +70,8 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource:
-                  - !Sub "arn:aws:s3:::ivan-kukushkin-bucket"
-                  - !Sub "arn:aws:s3:::ivan-kukushkin-bucket/*"
+                  - !Sub arn:aws:s3:::${Bucket}
+                  - !Sub arn:aws:s3:::${Bucket}/*
         - PolicyName: SQSPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -194,6 +194,73 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonRDSFullAccess
       RoleName: EC2InstanceRole
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CommonLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Common permissions for all Lambda functions
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+        - PolicyName: UploadsNotificationFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Permissions for the _UploadsNotificationFunction_ (SQS + SNS)
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref ProjectUploadsNotificationTopic
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt ProjectUploadsNotificationQueue.Arn
+
+        - PolicyName: DataConsistencyFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Permissions for the _DataConsistencyFunction_ (RDS + S3)
+              - Effect: Allow
+                Action:
+                  - rds-db:connect
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${Bucket}
+
+        - PolicyName: S3LogsFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Permissions for the _S3LogsFunction_ (S3)
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${Bucket}
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile

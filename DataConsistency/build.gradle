@@ -22,7 +22,7 @@ test {
 
 
 dependencies {
-    implementation platform('software.amazon.awssdk:bom:2.27.23')
+    implementation platform('software.amazon.awssdk:bom:2.27.24')
     implementation 'software.amazon.awssdk:s3'
     implementation 'com.amazonaws:aws-lambda-java-core:1.2.3'
     implementation 'com.amazonaws:aws-lambda-java-events:3.13.0'
