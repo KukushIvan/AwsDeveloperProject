@@ -18,7 +18,10 @@ Parameters:
   DBName:
     Type: String
     Description: The name of the database
-
+  AWSRegion:
+    Type: String
+    Default: us-west-2
+    Description: Region where resources will be deployed
 Resources:
   Bucket:
     Type: AWS::S3::Bucket
@@ -26,7 +29,6 @@ Resources:
       BucketName: ivan-kukushkin-bucket
       WebsiteConfiguration:
         IndexDocument: index.html
-
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -37,17 +39,21 @@ Resources:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-Network
-
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPC
+      RouteTableIds:
+        - !Ref RouteTable
   ProjectUploadsNotificationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub "ivan-kukushkin-project-UploadsNotificationQueue"
-
+      QueueName: !Sub ivan-kukushkin-project-UploadsNotificationQueue
   ProjectUploadsNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !Sub "ivan-kukushkin-project-UploadsNotificationTopic"
-
+      TopicName: !Sub ivan-kukushkin-project-UploadsNotificationTopic
   CombinedAccessRole:
     Type: AWS::IAM::Role
     Properties:
@@ -70,8 +76,8 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource:
-                  - !Sub "arn:aws:s3:::ivan-kukushkin-bucket"
-                  - !Sub "arn:aws:s3:::ivan-kukushkin-bucket/*"
+                  - !Sub arn:aws:s3:::${Bucket}
+                  - !Sub arn:aws:s3:::${Bucket}/*
         - PolicyName: SQSPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -94,28 +100,38 @@ Resources:
                   - sns:ListSubscriptionsByTopic
                   - sns:Unsubscribe
                   - SNS:SetSubscriptionAttributes
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Resource: !Ref ProjectUploadsNotificationTopic
-
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-InternetGateway
-
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
-
   PublicSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
       AssignIpv6AddressOnCreation: false
       AvailabilityZone: !Select
         - 0
-        - !GetAZs us-west-2
+        - !GetAZs
+          Ref: AWSRegion
       CidrBlock: 10.0.11.0/24
       EnableDns64: false
       Ipv6Native: false
@@ -124,20 +140,30 @@ Resources:
         - Key: Name
           Value: ivan-kukushkin-project-PublicSubnet-A
       VpcId: !Ref VPC
-      
   RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnetA
       RouteTableId: !Ref RouteTable
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref RouteTable
 
+  AdditionalPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AdditionalPrivateSubnet
+      RouteTableId: !Ref RouteTable
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       AssignIpv6AddressOnCreation: false
       AvailabilityZone: !Select
         - 1
-        - !GetAZs us-west-2
+        - !GetAZs
+          Ref: AWSRegion
       CidrBlock: 10.0.12.0/24
       EnableDns64: false
       Ipv6Native: false
@@ -146,14 +172,14 @@ Resources:
         - Key: Name
           Value: ivan-kukushkin-project-PrivateSubnet
       VpcId: !Ref VPC
-      
   AdditionalPrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
         - 0
-        - !GetAZs us-west-2
+        - !GetAZs
+          Ref: AWSRegion
       CidrBlock: 10.0.13.0/24
       EnableDns64: false
       Ipv6Native: false
@@ -161,7 +187,6 @@ Resources:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-PrivateSubnet-B
-
   RouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -169,14 +194,12 @@ Resources:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-RouteTable
-
   Route:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref RouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
-
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -191,7 +214,80 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonRDSFullAccess
       RoleName: EC2InstanceRole
-
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CommonLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+        - PolicyName: UploadsNotificationFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref ProjectUploadsNotificationTopic
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt ProjectUploadsNotificationQueue.Arn
+        - PolicyName: DataConsistencyFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds-db:connect
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${Bucket}
+        - PolicyName: S3LogsFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${Bucket}
+        - PolicyName: LambdaVpcPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:UnassignPrivateIpAddresses
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                Resource: '*'
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -200,7 +296,6 @@ Resources:
         - !Ref CombinedAccessRole
     DependsOn:
       - CombinedAccessRole
-
   SecurityGroupEC2:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -219,23 +314,32 @@ Resources:
           FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
-
   SecurityGroupRDS:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow access from EC2 only
       VpcId: !Ref VPC
-
-  # Add ingress rule for EC2 to allow access to RDS
   EC2ToRDSIngress:
     Type: AWS::EC2::SecurityGroupIngress
-    Properties: 
+    Properties:
       GroupId: !Ref SecurityGroupRDS
       IpProtocol: tcp
       FromPort: 3306
       ToPort: 3306
       SourceSecurityGroupId: !Ref SecurityGroupEC2
-
+  LambdaExecutionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Lambda access to RDS
+      VpcId: !Ref VPC
+  LambdaToRDSIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroupRDS
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref LambdaExecutionSecurityGroup
   EC2Instance:
     DependsOn: SecurityGroupEC2
     Type: AWS::EC2::Instance
@@ -255,7 +359,7 @@ Resources:
           #!/bin/bash
           yum update -y
           yum install -y java-17-amazon-corretto-devel
-          sudo wget https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm 
+          sudo wget https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
           sudo dnf install mysql80-community-release-el9-1.noarch.rpm -y
           sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
           sudo dnf install mysql-community-client -y
@@ -283,7 +387,6 @@ Resources:
       PubliclyAccessible: false
       MultiAZ: false
       DBInstanceIdentifier: ivan-kukushkin-project-rds-instance
-
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -291,3 +394,48 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet
         - !Ref AdditionalPrivateSubnet
+Outputs:
+  CombinedAccessRoleArn:
+    Value: !GetAtt CombinedAccessRole.Arn
+    Export:
+      Name: CombinedAccessRoleArn
+  UploadsNotificationQueueArn:
+    Value: !GetAtt ProjectUploadsNotificationQueue.Arn
+    Export:
+      Name: UploadsNotificationQueueArn
+  UploadsNotificationTopicArn:
+    Value: !Ref ProjectUploadsNotificationTopic
+    Export:
+      Name: UploadsNotificationTopicArn
+  RdsInstanceEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: RdsInstanceEndpoint
+  RdsDatabaseName:
+    Value: !Ref DBName
+    Export:
+      Name: RdsDatabaseName
+  S3BucketName:
+    Value: !Ref Bucket
+    Export:
+      Name: S3BucketName
+  LambdaExecutionRole:
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: LambdaExecutionRole
+  AWSRegion:
+    Value: !Ref AWSRegion
+    Export:
+      Name: AWSRegion
+  PrivateSubnet:
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: PrivateSubnet
+  AdditionalPrivateSubnet:
+    Value: !Ref AdditionalPrivateSubnet
+    Export:
+      Name: AdditionalPrivateSubnet
+  LambdaExecutionSecurityGroup:
+    Value: !Ref LambdaExecutionSecurityGroup
+    Export:
+      Name: LambdaExecutionSecurityGroup

@@ -1,0 +1,5 @@
+rootProject.name = 'AwsDeveloperProject'
+
+include 'UploadNotifications'
+include 'DataConsistency'
+include 'S3Logs'

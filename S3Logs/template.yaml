@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  S3LogsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Ivan-Kukushkin-Project-S3LogsFunction
+      Handler: com.epam.aws.lambda.S3LogsHandler::handleRequest
+      Runtime: java17
+      CodeUri: .
+      Role: !ImportValue LambdaExecutionRole
+      MemorySize: 512
+      Timeout: 30
+      AutoPublishAlias: live
+      DeploymentPreference:
+        Type: AllAtOnce
