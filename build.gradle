@@ -23,6 +23,7 @@ dependencies {
     implementation 'software.amazon.awssdk:ssm'
     implementation 'software.amazon.awssdk:sns'
     implementation 'software.amazon.awssdk:sqs'
+    implementation 'software.amazon.awssdk:lambda'
     implementation 'org.springdoc:springdoc-openapi-ui:1.8.0'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly  'org.projectlombok:lombok'

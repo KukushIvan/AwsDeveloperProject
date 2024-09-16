@@ -27,6 +27,7 @@ dependencies {
 
     // AWS Lambda Java Log4j2
     implementation 'com.amazonaws:aws-lambda-java-log4j2:1.6.0'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.19.0'
 
     // Test dependencies
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'

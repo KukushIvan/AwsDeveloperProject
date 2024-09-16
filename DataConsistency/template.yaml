@@ -1,8 +1,7 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
 Parameters:
-  AWSRegion:
-    Type: String
-    Default: us-west-2
-    Description: "Region where resources will be deployed"
   DBUsername:
     Type: String
     Description: "The master username for the RDS instance."
@@ -20,15 +19,26 @@ Resources:
       FunctionName: Ivan-Kukushkin-Project-DataConsistencyFunction
       Handler: com.epam.aws.lambda.DataConsistencyHandler::handleRequest
       Runtime: java17
+      CodeUri: .
       MemorySize: 512
-      Timeout: 30
+      Timeout: 60
       Role: !ImportValue LambdaExecutionRole
+      VpcConfig:
+        SecurityGroupIds:
+          - !ImportValue LambdaExecutionSecurityGroup
+        SubnetIds:
+          - !ImportValue PrivateSubnet
+          - !ImportValue AdditionalPrivateSubnet
       Environment:
         Variables:
           DB_ENDPOINT: !ImportValue RdsInstanceEndpoint
           DB_NAME: !ImportValue RdsDatabaseName
           S3_BUCKET: !ImportValue S3BucketName
-          AWS_REGION: !Ref AWSRegion
+          DB_USERNAME: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+      AutoPublishAlias: live
+      DeploymentPreference:
+        Type: AllAtOnce
 
   DataConsistencyApi:
     Type: AWS::Serverless::Api
@@ -42,7 +52,7 @@ Resources:
               x-amazon-apigateway-integration:
                 uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DataConsistencyFunction.Arn}/invocations
                 httpMethod: POST
-                type: aws_proxy
+                type: aws
                 requestTemplates:
                   application/json: '{"detail-type": "APIGateway"}'
 
@@ -53,3 +63,20 @@ Resources:
       Targets:
         - Arn: !GetAtt DataConsistencyFunction.Arn
           Id: "DataConsistencyFunctionTarget"
+          Input: '{"detail-type": "Scheduled Event"}'
+
+  DataConsistencyFunctionApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DataConsistencyFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DataConsistencyApi}/*/POST/check-consistency
+
+  DataConsistencyFunctionEventInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DataConsistencyFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DataConsistencyScheduleRule.Arn

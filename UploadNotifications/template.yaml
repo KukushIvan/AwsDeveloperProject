@@ -7,8 +7,9 @@ Resources:
       FunctionName: Ivan-Kukushkin-Project-UploadsNotificationFunction
       Handler: com.epam.aws.lambda.UploadsNotificationHandler::handleRequest
       Runtime: java17
-      CodeUri: build/libs/UploadNotifications.jar
+      CodeUri: .
       Role: !ImportValue LambdaExecutionRole
+      Timeout: 30
       Events:
         SqsEvent:
           Type: SQS
@@ -17,7 +18,6 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !ImportValue UploadsNotificationTopicArn
-          AWS_REGION: !ImportValue
+      AutoPublishAlias: live
       DeploymentPreference:
         Type: AllAtOnce
-
