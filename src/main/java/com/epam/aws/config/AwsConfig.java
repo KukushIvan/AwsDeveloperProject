@@ -3,6 +3,7 @@ package com.epam.aws.config;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils;
+import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,5 +37,9 @@ public class AwsConfig {
                 .region(Region.of(region))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
+    }
+    @Bean
+    public LambdaClient lambdaClient() {
+        return LambdaClient.create();
     }
 }
