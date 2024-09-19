@@ -11,6 +11,10 @@ repositories {
     mavenCentral()
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
 dependencies {
     implementation platform('software.amazon.awssdk:bom:2.27.24')
     // AWS SDK for SQS
