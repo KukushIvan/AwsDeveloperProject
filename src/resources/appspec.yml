@@ -5,15 +5,14 @@ files:
     destination: /home/ec2-user/
   - source: start_server.sh
     destination: /home/ec2-user/
+permissions:
+  - object: /home/ec2-user/start_server.sh
+    mode: 755
+    owner: ec2-user
+    type:
+      - file
 
 hooks:
-  BeforeInstall:
-    - location: /bin/bash
-      timeout: 300
-      runas: ec2-user
-      commands:
-        - sudo chmod +x /home/ec2-user/start_server.sh
-
   AfterInstall:
     - location: /home/ec2-user/start_server.sh
       timeout: 300

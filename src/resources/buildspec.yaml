@@ -1,0 +1,32 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+    commands:
+      - gradle --version
+  pre_build:
+    commands:
+      - echo "Running tests"
+      - gradle test
+  build:
+    commands:
+      - echo "Building the project"
+      - gradle clean build
+      - echo "Creating SAM package for data consistency lambda function"
+      - sam package --template-file ./DataConsistency/template.yaml --s3-bucket kukushkin-build-artifacts --output-template-file dataConsistency.yaml
+      - echo "Creating SAM package for upload notifications lambda function"
+      - sam package --template-file ./UploadNotifications/template.yaml --s3-bucket kukushkin-build-artifacts --output-template-file uploadNotifications.yaml
+  post_build:
+    commands:
+      - echo "Build completed"
+artifacts:
+  files:
+    - dataConsistency.yaml
+    - uploadNotifications.yaml
+    - application_artifact.zip
+    - build/libs/AwsDeveloperProject.jar
+    - src/resources/appspec.yml
+    - src/resources/start_server.sh
+  discard-paths: yes
