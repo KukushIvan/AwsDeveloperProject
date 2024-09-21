@@ -374,6 +374,7 @@ Resources:
           echo "S3_BUCKET_NAME=${Bucket}" >> /etc/environment
           echo "NOTIFICATION_QUEUE=${ProjectUploadsNotificationQueue}" >> /etc/environment
           echo "NOTIFICATION_TOPIC=${ProjectUploadsNotificationTopic}" >> /etc/environment
+          sudo chmod 644 /etc/environment
   RDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
