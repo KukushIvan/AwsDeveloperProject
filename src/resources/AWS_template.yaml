@@ -39,13 +39,6 @@ Resources:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-Network
-  S3VPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
-      VpcId: !Ref VPC
-      RouteTableIds:
-        - !Ref RouteTable
   ProjectUploadsNotificationQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -124,6 +117,26 @@ Resources:
     Properties:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-PublicRouteTable
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: ivan-kukushkin-project-PrivateRouteTable
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
   PublicSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -140,22 +153,11 @@ Resources:
         - Key: Name
           Value: ivan-kukushkin-project-PublicSubnet-A
       VpcId: !Ref VPC
-  RouteTableAssociation:
+  PublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PublicSubnetA
-      RouteTableId: !Ref RouteTable
-  PrivateSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet
-      RouteTableId: !Ref RouteTable
-
-  AdditionalPrivateSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref AdditionalPrivateSubnet
-      RouteTableId: !Ref RouteTable
+      RouteTableId: !Ref PublicRouteTable
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -187,19 +189,16 @@ Resources:
       Tags:
         - Key: Name
           Value: ivan-kukushkin-project-PrivateSubnet-B
-  RouteTable:
-    Type: AWS::EC2::RouteTable
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: ivan-kukushkin-project-RouteTable
-  Route:
-    Type: AWS::EC2::Route
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+  AdditionalPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref RouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
+      SubnetId: !Ref AdditionalPrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -364,6 +363,12 @@ Resources:
           sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023
           sudo dnf install mysql-community-client -y
           sudo rm mysql80-community-release-el9-1.noarch.rpm -f
+          sudo dnf install -y ruby wget
+          sudo wget https://aws-codedeploy-${AWSRegion}.s3.${AWSRegion}.amazonaws.com/latest/install
+          sudo chmod +x ./install
+          sudo ./install auto
+          sudo systemctl enable codedeploy-agent
+          sudo systemctl start codedeploy-agent
           echo "DB_USER=${DBUsername}" >> /etc/environment
           echo "DB_PASSWORD=${DBPassword}" >> /etc/environment
           echo "DB_HOST=${RDSInstance.Endpoint.Address}" >> /etc/environment
