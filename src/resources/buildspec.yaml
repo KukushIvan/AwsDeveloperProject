@@ -14,10 +14,18 @@ phases:
     commands:
       - echo "Building the project"
       - gradle clean build
+      - echo "Building DataConsistency function"
+      - cd DataConsistency
+      - sam build
       - echo "Creating SAM package for data consistency lambda function"
-      - sam package --template-file ./DataConsistency/template.yaml --s3-bucket kukushkin-build-artifacts --output-template-file dataConsistency.yaml
+      - sam package --template-file .aws-sam/build/template.yaml --s3-bucket kukushkin-build-artifacts --output-template-file ../dataConsistency.yaml
+      - cd ..
+      - echo "Building UploadNotification function"
+      - cd UploadNotifications
+      - sam build
       - echo "Creating SAM package for upload notifications lambda function"
-      - sam package --template-file ./UploadNotifications/template.yaml --s3-bucket kukushkin-build-artifacts --output-template-file uploadNotifications.yaml
+      - sam package --template-file .aws-sam/build/template.yaml --s3-bucket kukushkin-build-artifacts --output-template-file ../uploadNotifications.yaml
+      - cd ..
   post_build:
     commands:
       - echo "Build completed"
