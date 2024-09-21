@@ -367,14 +367,15 @@ Resources:
           sudo ./install auto
           sudo systemctl enable codedeploy-agent
           sudo systemctl start codedeploy-agent
-          echo "DB_USER=${DBUsername}" >> /etc/environment
-          echo "DB_PASSWORD=${DBPassword}" >> /etc/environment
-          echo "DB_HOST=${RDSInstance.Endpoint.Address}" >> /etc/environment
-          echo "DB_NAME=${DBName}" >> /etc/environment
-          echo "S3_BUCKET_NAME=${Bucket}" >> /etc/environment
-          echo "NOTIFICATION_QUEUE=${ProjectUploadsNotificationQueue}" >> /etc/environment
-          echo "NOTIFICATION_TOPIC=${ProjectUploadsNotificationTopic}" >> /etc/environment
-          sudo chmod 644 /etc/environment
+          echo "export DB_USER=${DBUsername}" >> /home/ec2-user/app_env.sh
+          echo "export DB_PASSWORD=${DBPassword}" >> /home/ec2-user/app_env.sh
+          echo "export DB_HOST=${RDSInstance.Endpoint.Address}" >> /home/ec2-user/app_env.sh
+          echo "export DB_NAME=${DBName}" >> /home/ec2-user/app_env.sh
+          echo "export S3_BUCKET_NAME=${Bucket}" >> /home/ec2-user/app_env.sh
+          echo "export NOTIFICATION_QUEUE=${ProjectUploadsNotificationQueue}" >> /home/ec2-user/app_env.sh
+          echo "export NOTIFICATION_TOPIC=${ProjectUploadsNotificationTopic}" >> /home/ec2-user/app_env.sh
+          chmod 600 /home/ec2-user/app_env.sh
+          chown ec2-user:ec2-user /home/ec2-user/app_env.sh
   RDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
