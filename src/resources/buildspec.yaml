@@ -25,7 +25,6 @@ artifacts:
   files:
     - dataConsistency.yaml
     - uploadNotifications.yaml
-    - application_artifact.zip
     - build/libs/AwsDeveloperProject.jar
     - src/resources/appspec.yml
     - src/resources/start_server.sh
