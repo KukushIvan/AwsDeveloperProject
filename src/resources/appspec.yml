@@ -11,7 +11,7 @@ hooks:
     - location: /bin/bash
       timeout: 300
       runas: ec2-user
-      scripts:
+      commands:
         - sudo chmod +x /home/ec2-user/start_server.sh
 
   AfterInstall:
