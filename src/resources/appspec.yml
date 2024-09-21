@@ -1,0 +1,23 @@
+version: 0.0
+os: linux
+files:
+  - source: AwsDeveloperProject.jar
+    destination: /home/ec2-user/
+  - source: start_server.sh
+    destination: /home/ec2-user/
+permissions:
+  - object: /home/ec2-user/start_server.sh
+    mode: 755
+    owner: ec2-user
+    type:
+      - file
+  - object: /home/ec2-user/AwsDeveloperProject.jar
+    owner: ec2-user
+    type:
+      - file
+
+hooks:
+  AfterInstall:
+    - location: start_server.sh
+      timeout: 300
+      runas: ec2-user

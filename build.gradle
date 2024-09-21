@@ -13,6 +13,15 @@ targetCompatibility = '17'
 repositories {
     mavenCentral()
 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Jar).configureEach {
+    archiveVersion.set('')
+}
+
 //Since Spring boot uses the internal junit version we should update it using the variable below and not with dependencies
 ext['junit-jupiter.version'] = '5.11.0'
 
