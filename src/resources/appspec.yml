@@ -6,8 +6,12 @@ files:
   - source: start_server.sh
     destination: /home/ec2-user/
 permissions:
-  - object: /home/ec2-user/start_server.sh
+  - object: start_server.sh
     mode: 755
+    owner: ec2-user
+    type:
+      - file
+  - object: AwsDeveloperProject.jar
     owner: ec2-user
     type:
       - file
