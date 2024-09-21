@@ -7,9 +7,14 @@ files:
     destination: /home/ec2-user/
 
 hooks:
-  AfterInstall:
-    - location: start_server.sh
+  BeforeInstall:
+    - location: /bin/bash
       timeout: 300
       runas: ec2-user
-      beforeInstall:
-        - chmod +x /home/ec2-user/start_server.sh
+      scripts:
+        - sudo chmod +x /home/ec2-user/start_server.sh
+
+  AfterInstall:
+    - location: /home/ec2-user/start_server.sh
+      timeout: 300
+      runas: ec2-user
