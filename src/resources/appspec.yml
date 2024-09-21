@@ -3,9 +3,13 @@ os: linux
 files:
   - source: AwsDeveloperProject.jar
     destination: /home/ec2-user/
+  - source: start_server.sh
+    destination: /home/ec2-user/
 
 hooks:
   AfterInstall:
     - location: start_server.sh
       timeout: 300
       runas: ec2-user
+      beforeInstall:
+        - chmod +x /home/ec2-user/start_server.sh
