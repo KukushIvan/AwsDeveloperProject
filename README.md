@@ -1,92 +1,217 @@
-# springboot_ec2_kukushkin
 
+# Image Management Application
 
+## Overview
 
-## Getting started
+This project is an Image Management Application designed to demonstrate knowledge and proficiency in developing and deploying applications on AWS using various services like EC2, S3, RDS, Lambda, SNS, SQS, and others. The application allows users to upload, manage, and view images. It also includes features like image metadata retrieval, email notifications upon image uploads, and data consistency checks between the database and S3 bucket.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Table of Contents
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- [Features](#features)
+- [Architecture](#architecture)
+- [AWS Services Used](#aws-services-used)
+- [Prerequisites](#prerequisites)
+- [Deployment Instructions](#deployment-instructions)
+- [Usage Guidelines](#usage-guidelines)
+- [Configuration Details](#configuration-details)
+- [Limitations and Considerations](#limitations-and-considerations)
+- [License](#license)
 
-## Add your files
+## Features
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+- **Image Upload**: Users can upload images to the application.
+- **Image Download**: Users can download images by name.
+- **Image Deletion**: Users can delete images by name.
+- **View Metadata**: Retrieve metadata for a specific image or a random image.
+- **Email Notifications**: Subscribers receive email notifications when new images are uploaded.
+- **Subscription Management**: Users can subscribe or unsubscribe from email notifications.
+- **Data Consistency Check**: Regular checks to ensure the database metadata aligns with images stored in S3.
+- **Scalable Infrastructure**: Utilizes AWS services to ensure the application scales efficiently.
 
+## Architecture
+
+The application architecture leverages various AWS services to provide a robust and scalable solution.
+
+- **Amazon EC2**: Hosts the web application.
+- **Amazon S3**: Stores the uploaded images.
+- **Amazon RDS**: Manages the database storing image metadata.
+- **AWS Lambda**: Executes serverless functions for data consistency checks and processing upload notifications.
+- **Amazon SNS/SQS**: Handles messaging for notifications and decoupling services.
+- **AWS CloudFormation**: Automates the provisioning of the AWS infrastructure.
+- **AWS SAM (Serverless Application Model)**: Manages the serverless components of the application.
+
+## AWS Services Used
+
+- Amazon EC2
+- Amazon S3
+- Amazon RDS
+- AWS Lambda
+- Amazon SNS
+- Amazon SQS
+- AWS CloudFormation
+- AWS SAM
+- AWS IAM
+- Amazon VPC
+- Amazon CloudWatch
+
+## Prerequisites
+
+- **AWS Account**: You need an AWS account with permissions to create the resources.
+- **AWS CLI**: Installed and configured with appropriate credentials.
+- **AWS SAM CLI**: Installed for deploying serverless components.
+- **Java 17**: The application is built using Java 17.
+- **Gradle**: Used for building the application.
+- **Postman**: For testing API endpoints (optional).
+
+## Deployment Instructions
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/image-management-application.git
+cd image-management-application
 ```
-cd existing_repo
-git remote add origin https://git.epam.com/ivan_kukushkin/springboot_ec2_kukushkin.git
-git branch -M main
-git push -uf origin main
+
+### 2. Build the Application
+
+```bash
+gradle clean build
 ```
 
-## Integrate with your tools
+### 3. Deploy CloudFormation Stack
 
-- [ ] [Set up project integrations](https://git.epam.com/ivan_kukushkin/springboot_ec2_kukushkin/-/settings/integrations)
+Deploy the main CloudFormation template to set up the core infrastructure.
 
-## Collaborate with your team
+```bash
+aws cloudformation deploy   --template-file cloudformation/main-template.yaml   --stack-name image-management-stack   --parameter-overrides       ParameterKey=HomeIp,ParameterValue=YOUR_IP_ADDRESS       ParameterKey=AMIId,ParameterValue=YOUR_AMI_ID       ParameterKey=InstanceType,ParameterValue=t2.micro       ParameterKey=DBUsername,ParameterValue=YOUR_DB_USERNAME       ParameterKey=DBPassword,ParameterValue=YOUR_DB_PASSWORD       ParameterKey=DBName,ParameterValue=YOUR_DB_NAME   --capabilities CAPABILITY_NAMED_IAM
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### 4. Deploy Serverless Components with AWS SAM
 
-## Test and Deploy
+Navigate to each Lambda function directory and deploy using SAM.
 
-Use the built-in continuous integration in GitLab.
+#### UploadsNotificationFunction
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+cd lambda/UploadsNotificationFunction
+sam build
+sam deploy   --template-file .aws-sam/build/template.yaml   --stack-name uploads-notification-stack   --s3-bucket your-s3-bucket-for-lambda-artifacts   --capabilities CAPABILITY_NAMED_IAM
+cd ../..
+```
 
-***
+#### DataConsistencyFunction
 
-# Editing this README
+```bash
+cd lambda/DataConsistencyFunction
+sam build
+sam deploy   --template-file .aws-sam/build/template.yaml   --stack-name data-consistency-stack   --s3-bucket your-s3-bucket-for-lambda-artifacts   --capabilities CAPABILITY_NAMED_IAM   --parameter-overrides       ParameterKey=DBUsername,ParameterValue=YOUR_DB_USERNAME       ParameterKey=DBPassword,ParameterValue=YOUR_DB_PASSWORD
+cd ../..
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### 5. Configure the Application Load Balancer (Optional)
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+If using an Auto Scaling group and Load Balancer, ensure they are set up and configured correctly.
 
-## Name
-Choose a self-explaining name for your project.
+### 6. Update DNS Settings (Optional)
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Update your DNS settings if you want to access the application via a custom domain.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Usage Guidelines
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### API Endpoints
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+The application exposes several API endpoints. Use the provided Postman collection or the following endpoints.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+#### Upload an Image
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```http
+POST http://{EC2_INSTANCE_IP}:8080/images/upload
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+- Body: Form data with a file field named `image`.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+#### Download an Image
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```http
+GET http://{EC2_INSTANCE_IP}:8080/images/download/{imageName}
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+#### Delete an Image
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```http
+DELETE http://{EC2_INSTANCE_IP}:8080/images/delete/{imageName}
+```
+
+#### Get Image Metadata
+
+```http
+GET http://{EC2_INSTANCE_IP}:8080/images/metadata/{imageName}
+```
+
+#### Get Random Image Metadata
+
+```http
+GET http://{EC2_INSTANCE_IP}:8080/images/metadata/random
+```
+
+#### Subscribe to Notifications
+
+```http
+POST http://{EC2_INSTANCE_IP}:8080/subscription/subscribe
+```
+
+- Body: Form data with a field named `email`.
+
+#### Unsubscribe from Notifications
+
+```http
+POST http://{EC2_INSTANCE_IP}:8080/subscription/unsubscribe
+```
+
+- Body: Form data with a field named `email`.
+
+#### Data Consistency Check
+
+To trigger a data consistency check:
+
+```http
+GET http://{EC2_INSTANCE_IP}:8080/trigger-data-consistency
+```
+
+## Configuration Details
+
+### Environment Variables
+
+Ensure the following environment variables are set for the application and Lambda functions:
+
+- `DB_USER`: Database username.
+- `DB_PASSWORD`: Database password.
+- `DB_HOST`: Database endpoint.
+- `DB_NAME`: Database name.
+- `S3_BUCKET_NAME`: Name of the S3 bucket storing images.
+- `NOTIFICATION_QUEUE`: SQS queue name.
+- `NOTIFICATION_TOPIC`: SNS topic ARN.
+
+### AWS Parameters
+
+Parameters used in CloudFormation and SAM templates:
+
+- `HomeIp`: Your IP address for SSH access.
+- `AMIId`: ID of your custom AMI.
+- `InstanceType`: EC2 instance type (e.g., t2.micro).
+- `DBUsername`: Database username.
+- `DBPassword`: Database password.
+- `DBName`: Name of the database.
+- `AWSRegion`: AWS region for deployment.
+
+## Limitations and Considerations
+
+- **Cost Management**: Be aware of AWS costs, especially for NAT Gateways, VPC Endpoints, and running EC2 instances. Remove or stop resources when not in use.
+- **AWS Limits**: Ensure you stay within AWS free-tier limits to avoid unexpected charges.
+- **Security**: Do not commit sensitive information like AWS credentials or passwords to version control.
+- **Resource Cleanup**: After testing or demoing the application, clean up AWS resources to prevent incurring costs.
+- **Email Limits**: AWS SES has limits on sending emails. Monitor your usage to prevent hitting those limits.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This project is licensed under the MIT License.

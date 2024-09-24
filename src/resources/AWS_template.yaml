@@ -1,11 +1,11 @@
 Parameters:
-  ivanKukushkinProjectHomeIp:
+  awsDeveloperProjectHomeIp:
     Type: String
     Description: my changing ip
-  ivanKukushkinProjectAMI:
+  awsDeveloperProjectAMI:
     Type: String
     Description: my ami image id
-  ivanKukushkinInstanceType:
+  awsDeveloperInstanceType:
     Type: String
     Description: desired instance type
   DBUsername:
@@ -26,7 +26,7 @@ Resources:
   Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: ivan-kukushkin-bucket
+      BucketName: aws-developer-bucket
       WebsiteConfiguration:
         IndexDocument: index.html
   VPC:
@@ -38,15 +38,15 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-Network
+          Value: aws-developer-project-Network
   ProjectUploadsNotificationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub ivan-kukushkin-project-UploadsNotificationQueue
+      QueueName: !Sub aws-developer-project-UploadsNotificationQueue
   ProjectUploadsNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !Sub ivan-kukushkin-project-UploadsNotificationTopic
+      TopicName: !Sub aws-developer-project-UploadsNotificationTopic
   CombinedAccessRole:
     Type: AWS::IAM::Role
     Properties:
@@ -109,7 +109,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-InternetGateway
+          Value: aws-developer-project-InternetGateway
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
@@ -121,14 +121,14 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-PublicRouteTable
+          Value: aws-developer-project-PublicRouteTable
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-PrivateRouteTable
+          Value: aws-developer-project-PrivateRouteTable
   PublicRoute:
     Type: AWS::EC2::Route
     Properties:
@@ -149,7 +149,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-PublicSubnet-A
+          Value: aws-developer-project-PublicSubnet-A
       VpcId: !Ref VPC
   PublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -170,7 +170,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-PrivateSubnet
+          Value: aws-developer-project-PrivateSubnet
       VpcId: !Ref VPC
   AdditionalPrivateSubnet:
     Type: AWS::EC2::Subnet
@@ -186,7 +186,7 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-PrivateSubnet-B
+          Value: aws-developer-project-PrivateSubnet-B
   PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -302,7 +302,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: !Ref ivanKukushkinProjectHomeIp
+          CidrIp: !Ref awsDeveloperProjectHomeIp
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -341,16 +341,16 @@ Resources:
     DependsOn: SecurityGroupEC2
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: !Ref ivanKukushkinInstanceType
+      InstanceType: !Ref awsDeveloperInstanceType
       SecurityGroupIds:
         - !Ref SecurityGroupEC2
       KeyName: Work-pc
       SubnetId: !Ref PublicSubnetA
       IamInstanceProfile: !Ref EC2InstanceProfile
-      ImageId: !Ref ivanKukushkinProjectAMI
+      ImageId: !Ref awsDeveloperProjectAMI
       Tags:
         - Key: Name
-          Value: ivan-kukushkin-project-EC2Instance
+          Value: aws-developer-project-EC2Instance
       UserData: !Base64
         Fn::Sub: |
           #!/bin/bash
@@ -391,7 +391,7 @@ Resources:
       StorageType: gp2
       PubliclyAccessible: false
       MultiAZ: false
-      DBInstanceIdentifier: ivan-kukushkin-project-rds-instance
+      DBInstanceIdentifier: aws-developer-project-rds-instance
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
