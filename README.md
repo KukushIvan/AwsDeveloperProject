@@ -68,8 +68,8 @@ The application architecture leverages various AWS services to provide a robust 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/image-management-application.git
-cd image-management-application
+git clone https://github.com/KukushIvan/AwsDeveloperProject.git
+cd AwsDeveloperProject
 ```
 
 ### 2. Build the Application
