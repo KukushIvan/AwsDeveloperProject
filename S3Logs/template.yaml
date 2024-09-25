@@ -5,7 +5,7 @@ Resources:
   S3LogsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: Ivan-Kukushkin-Project-S3LogsFunction
+      FunctionName: AwsDeveloper-Project-S3LogsFunction
       Handler: com.epam.aws.lambda.S3LogsHandler::handleRequest
       Runtime: java17
       CodeUri: .

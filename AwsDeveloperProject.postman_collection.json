@@ -1,0 +1,221 @@
+{
+	"info": {
+		"_postman_id": "58079f84-5d3a-40f7-a0ed-fa089404a043",
+		"name": "AWS EC2 Instance",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "6543555"
+	},
+	"item": [
+		{
+			"name": "/images/delete/application-composer-template.yaml.png",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/images/delete/application-composer-template.yaml.png",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"images",
+						"delete",
+						"application-composer-template.yaml.png"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/images/download/application-composer-template.yaml.png",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/images/download/application-composer-template.yaml.png",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"images",
+						"download",
+						"application-composer-template.yaml.png"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/images/metadata/application-composer-template.yaml.png",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/images/metadata/application-composer-template.yaml.png",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"images",
+						"metadata",
+						"application-composer-template.yaml.png"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/images/metadata/random",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/images/metadata/random",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"images",
+						"metadata",
+						"random"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/images/upload",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/images/upload",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"images",
+						"upload"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/subscription/subscribe",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "email",
+							"value": "YourEmail@YourDomain.com",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/subscription/subscribe",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"subscription",
+						"subscribe"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/subscription/unsubscribe",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "email",
+							"value": "YourEmail@YourDomain.com",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://{{IP_ADDRESS}}:8080/subscription/unsubscribe",
+					"protocol": "http",
+					"host": [
+						"{{IP_ADDRESS}}"
+					],
+					"port": "8080",
+					"path": [
+						"subscription",
+						"unsubscribe"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/trigger-data-consistency",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "IP_ADDRESS",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -16,7 +16,7 @@ public class DataConsistencyService {
     }
 
     public String triggerDataConsistencyLambda() {
-        String functionName = "Ivan-Kukushkin-Project-DataConsistencyFunction";
+        String functionName = "AwsDeveloper-Project-DataConsistencyFunction";
 
         InvokeRequest invokeRequest = InvokeRequest.builder()
                 .functionName(functionName)

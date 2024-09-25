@@ -16,7 +16,7 @@ Resources:
   DataConsistencyFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: Ivan-Kukushkin-Project-DataConsistencyFunction
+      FunctionName: Aws-Developer-Project-DataConsistencyFunction
       Handler: com.epam.aws.lambda.DataConsistencyHandler::handleRequest
       Runtime: java17
       CodeUri: .
